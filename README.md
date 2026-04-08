@@ -1,5 +1,13 @@
 # CYD Project Scaffold
 
+<!-- Update version badge when FIRMWARE_VERSION changes in include/config.h -->
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Platform](https://img.shields.io/badge/platform-ESP32-green.svg)
+![PlatformIO](https://img.shields.io/badge/PlatformIO-6.x-orange.svg)
+![Board](https://img.shields.io/badge/CYD-2.8%22%20%7C%204.0%22-yellow.svg)
+![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)
+![Status](https://img.shields.io/badge/status-scaffold-blueviolet.svg)
+
 Reference board pages:
 
 - [LCDWiki 2.8inch ESP32-32E-7789](https://www.lcdwiki.com/2.8inch_ESP32-32E-7789)
