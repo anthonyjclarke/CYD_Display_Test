@@ -11,19 +11,41 @@
 #define CYD_BOARD_28
 #endif
 
-// Common control pins
+// Common TFT defaults. Touch wiring may be overridden inside each board profile.
+#ifndef TFT_CS_PIN
 #define TFT_CS_PIN    15
+#endif
+#ifndef TFT_DC_PIN
 #define TFT_DC_PIN    2
+#endif
+#ifndef TFT_MOSI_PIN
 #define TFT_MOSI_PIN  13
+#endif
+#ifndef TFT_SCLK_PIN
 #define TFT_SCLK_PIN  14
+#endif
+#ifndef TFT_MISO_PIN
 #define TFT_MISO_PIN  12
+#endif
+#ifndef TFT_RST_PIN
 #define TFT_RST_PIN   -1
+#endif
 
+#ifndef TOUCH_CS_PIN
 #define TOUCH_CS_PIN   33
+#endif
+#ifndef TOUCH_IRQ_PIN
 #define TOUCH_IRQ_PIN  36
+#endif
+#ifndef TOUCH_MOSI_PIN
 #define TOUCH_MOSI_PIN 13
+#endif
+#ifndef TOUCH_MISO_PIN
 #define TOUCH_MISO_PIN 12
+#endif
+#ifndef TOUCH_CLK_PIN
 #define TOUCH_CLK_PIN  14
+#endif
 
 #if defined(CYD_BOARD_28)
 #define CYD_BOARD_NAME       "ESP32-2432S028R 2.8in"
@@ -43,10 +65,25 @@
 #define LED_B_PIN            17
 #define CYD_RGB_ACTIVE_LOW   1
 #define LDR_PIN              34
+#undef TOUCH_CS_PIN
+#undef TOUCH_IRQ_PIN
+#undef TOUCH_MOSI_PIN
+#undef TOUCH_MISO_PIN
+#undef TOUCH_CLK_PIN
+// Verified against a working CYD28 project: touch is on a dedicated bus, not the TFT bus.
+#define TOUCH_CS_PIN         33
+#define TOUCH_IRQ_PIN        -1
+#define TOUCH_MOSI_PIN       32
+#define TOUCH_MISO_PIN       39
+#define TOUCH_CLK_PIN        25
 #define TOUCH_X_MIN          200
 #define TOUCH_X_MAX          3800
 #define TOUCH_Y_MIN          300
 #define TOUCH_Y_MAX          3700
+#define TOUCH_SWAP_XY        0
+#define TOUCH_RAW_INVERT_X   0
+#define TOUCH_RAW_INVERT_Y   0
+#define TOUCH_DEDICATED_SPI  1
 #define TOUCH_INVERT_X       0
 #define TOUCH_INVERT_Y       0
 #endif
@@ -69,12 +106,17 @@
 #define LED_B_PIN            -1
 #define CYD_RGB_ACTIVE_LOW   0
 #define LDR_PIN              -1
-#define TOUCH_X_MIN          200
-#define TOUCH_X_MAX          3900
-#define TOUCH_Y_MIN          200
-#define TOUCH_Y_MAX          3900
-#define TOUCH_INVERT_X       1
-#define TOUCH_INVERT_Y       1
+#define TOUCH_X_MIN          356
+#define TOUCH_X_MAX          3629
+#define TOUCH_Y_MIN          530
+#define TOUCH_Y_MAX          3588
+// CYD40 raw touch orientation differs from screen space and must be normalised first.
+#define TOUCH_SWAP_XY        1
+#define TOUCH_RAW_INVERT_X   1
+#define TOUCH_RAW_INVERT_Y   1
+#define TOUCH_DEDICATED_SPI  0
+#define TOUCH_INVERT_X       0
+#define TOUCH_INVERT_Y       0
 #endif
 
 // TFT_eSPI compile-time configuration.

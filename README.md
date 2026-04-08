@@ -10,16 +10,18 @@ This repository is now a reusable starting scaffold for CYD-based ESP32 projects
 - `cyd28`: 2.8-inch CYD (`ESP32-2432S028R`)
 - `cyd40`: 4.0-inch LCDWiki ESP32-32E
 
-The goal is one codebase with build-flag board selection, shared core services, and a built-in display validation app that proves the hardware baseline before project-specific work starts.
+The goal is one codebase with build-flag board selection, shared core services, and a built-in validation app that proves the hardware baseline before project-specific work starts.
 
 ## Confirmed working baseline
 
-The currently verified working display setup is:
+The currently verified working baseline is:
 
 - `cyd28` uses `ILI9341`
-- `cyd40` uses `ST7796_DRIVER`
+- `cyd40` uses `ST7796S`
 - `TFT_eSPI` is configured through compile-time defines injected with `-include include/config.h`
-- built-in `TFT_eSPI` text rendering works on the confirmed-good config
+- `cyd28` touch uses a dedicated SPI bus and `XPT2046_Touchscreen`
+- `cyd40` touch uses the shared TFT SPI bus through `TFT_eSPI` raw touch helpers
+- both board profiles have working touch calibration values captured on real hardware
 - the attempted local `User_Setup.h` / `tft_setup.h` override path is not used in this scaffold
 
 Practical rule:
@@ -35,7 +37,7 @@ Practical rule:
 - [storage_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/storage_service.h): persisted scaffold settings using `Preferences`
 - [backlight_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/backlight_service.h): PWM backlight control
 - [rgb_led_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/rgb_led_service.h): onboard RGB LED support where available
-- [touch_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/touch_service.h): XPT2046 touch handling using board-defined SPI pins
+- [touch_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/touch_service.h): board-abstracted touch state and polling
 - [wifi_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/wifi_service.h): WiFiManager-based connection flow
 - [ota_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/ota_service.h): ArduinoOTA support
 - [display_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/display_service.h): display bootstrap helpers and shared `TFT_eSPI` instance
@@ -49,7 +51,7 @@ The scaffold currently includes:
 - board selection by build flag
 - working `TFT_eSPI` display setup for both board profiles
 - board-specific display dimensions and GPIO mapping
-- touch support using the configured board pins
+- touch support for both supported boards, using the correct board-specific backend
 - backlight control
 - RGB LED support on the 2.8-inch CYD profile
 - WiFi management with WiFiManager
@@ -58,6 +60,22 @@ The scaffold currently includes:
 - serial debug logging through `debug.h`
 - a default full-screen display validation app in `src/app/`
 - serial diagnostic output for board, display, WiFi, OTA, and touch state
+
+## Architecture
+
+The current hardware architecture is intentionally split by board:
+
+- display setup is common and always provided by `TFT_eSPI`
+- runtime board metadata comes from [board_profile.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/board_profile.h)
+- compile-time board wiring and calibration live in [config.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/config.h)
+- touch polling is abstracted behind [touch_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/touch_service.h), but the backend is board-specific
+
+Touch backend split:
+
+- `cyd28`: dedicated touch SPI bus on `CLK=25`, `MISO=39`, `MOSI=32`, `CS=33`, implemented with `XPT2046_Touchscreen`
+- `cyd40`: touch shares the TFT SPI bus on `CLK=14`, `MISO=12`, `MOSI=13`, `CS=33`, implemented with `TFT_eSPI` raw touch access
+
+This split exists because the two boards are not actually wired the same way for touch, even though their TFT wiring is similar.
 
 ## Board-specifics currently encoded
 
@@ -68,7 +86,9 @@ The scaffold currently includes:
 - driver: `ILI9341`
 - landscape view: `320x240`
 - backlight: `GPIO21`
-- touch bus: `CLK=14`, `MOSI=13`, `MISO=12`, `CS=33`, `IRQ=36`
+- touch bus: dedicated SPI bus `CLK=25`, `MOSI=32`, `MISO=39`, `CS=33`, no IRQ
+- touch backend: `XPT2046_Touchscreen`
+- touch calibration: `X=200..3800`, `Y=300..3700`
 - RGB LED: `R=4`, `G=16`, `B=17`, active low
 - LDR: `GPIO34`
 
@@ -81,13 +101,15 @@ The scaffold currently includes:
 - backlight: `GPIO27`
 - TFT SPI/control: `MOSI=13`, `MISO=12`, `SCLK=14`, `CS=15`, `DC=2`, `RST=-1`
 - touch shares the TFT SPI pins with `CS=33`, `IRQ=36`
+- touch backend: `TFT_eSPI` raw touch polling on the shared bus
+- touch calibration: `X=356..3629`, `Y=530..3588`, swapped + raw-inverted before mapping
 - no onboard RGB LED pins are currently defined in this scaffold
 
 ## Default validation app
 
 The default app is meant to answer “is the platform baseline good?” before project work starts.
 
-On boot, `src/app/app.cpp` draws 5 full-width color bars across the entire active display area and overlays runtime text. This makes resolution/rotation mismatches obvious immediately on both `cyd28` (`320x240`) and `cyd40` (`480x320`).
+On boot, `src/app/app.cpp` draws 5 full-width color bars across the entire active display area and overlays runtime text. This makes resolution, rotation, and touch-state mismatches obvious immediately on both `cyd28` (`320x240`) and `cyd40` (`480x320`).
 
 It validates:
 
@@ -140,6 +162,7 @@ The scaffold currently depends on:
 
 - `bodmer/TFT_eSPI`
 - `tzapu/WiFiManager`
+- `PaulStoffregen/XPT2046_Touchscreen`
 - built-in Arduino ESP32 libraries for `WiFi`, `ArduinoOTA`, `Preferences`, and `SPI`
 
 ## Notes for future projects
@@ -147,4 +170,4 @@ The scaffold currently depends on:
 - Keep project-specific code separate from the scaffold services where possible.
 - Extend board-specific behavior through the board profile and per-board layout logic rather than scattering raw pin checks through app code.
 - If a new CYD variant is added later, start by adding a new profile to [config.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/config.h) and [board_profile.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/board_profile.h).
-- The 4-inch touch calibration values are still generic starting values and may need refinement on real hardware.
+- `cyd28` and `cyd40` touch wiring are intentionally different in this scaffold; do not collapse them back to one shared set of touch pins.

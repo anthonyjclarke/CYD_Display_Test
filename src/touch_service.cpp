@@ -2,26 +2,28 @@
 
 #include "board_profile.h"
 #include "debug.h"
+#include "display_service.h"
+#if TOUCH_DEDICATED_SPI
 #include <SPI.h>
+#include <XPT2046_Touchscreen.h>
+#endif
 
 namespace cyd::touch {
 
 namespace {
 
-// CYD boards in this scaffold share TFT and touch on the same physical SPI lines.
-// Use VSPI so touch transactions do not steal the pins away from TFT_eSPI.
+#if TOUCH_DEDICATED_SPI
+// CYD28 uses a physically separate touch SPI bus.
 SPIClass touchSpi(VSPI);
+XPT2046_Touchscreen touchController(TOUCH_CS_PIN, 255);
+#endif
+
 State current = {false, false, 0, 0, 0, 0, 0};
 uint16_t screenWidth = 0;
 uint16_t screenHeight = 0;
-uint8_t rotation = 1;
 
-const SPISettings kTouchSpiSettings(SPI_TOUCH_FREQUENCY, MSBFIRST, SPI_MODE0);
-constexpr uint8_t kCmdZ1 = 0xB1;
-constexpr uint8_t kCmdZ2 = 0xC1;
-constexpr uint8_t kCmdX  = 0x91;
-constexpr uint8_t kCmdY  = 0xD1;
-constexpr uint16_t kTouchThreshold = 400;
+constexpr uint16_t kTouchThreshold = 200;
+constexpr uint16_t kRawNoiseMargin = 20;
 
 uint16_t mapConstrained(int value, int inMin, int inMax, int outMin, int outMax) {
   if (inMax == inMin) {
@@ -31,75 +33,32 @@ uint16_t mapConstrained(int value, int inMin, int inMax, int outMin, int outMax)
   return static_cast<uint16_t>(map(value, inMin, inMax, outMin, outMax));
 }
 
-uint16_t transfer12(uint8_t command) {
-  touchSpi.transfer(command);
-  return touchSpi.transfer16(0x0000) >> 3;
+void applyTransform(uint16_t rawX, uint16_t rawY, uint16_t& outX, uint16_t& outY) {
+  // Normalise board-specific raw axes into a common XY space before calibration.
+  uint16_t axisX = rawX;
+  uint16_t axisY = rawY;
+#if TOUCH_SWAP_XY
+  const uint16_t swapped = axisX;
+  axisX = axisY;
+  axisY = swapped;
+#endif
+#if TOUCH_RAW_INVERT_X
+  axisX = 4095 - axisX;
+#endif
+#if TOUCH_RAW_INVERT_Y
+  axisY = 4095 - axisY;
+#endif
+  outX = axisX;
+  outY = axisY;
 }
 
-uint16_t bestTwoAverage(uint16_t a, uint16_t b, uint16_t c) {
-  const uint16_t ab = abs(static_cast<int>(a) - static_cast<int>(b));
-  const uint16_t ac = abs(static_cast<int>(a) - static_cast<int>(c));
-  const uint16_t bc = abs(static_cast<int>(b) - static_cast<int>(c));
-
-  if (ab <= ac && ab <= bc) {
-    return (a + b) / 2;
-  }
-  if (ac <= ab && ac <= bc) {
-    return (a + c) / 2;
-  }
-  return (b + c) / 2;
-}
-
-bool readRawPoint(uint16_t& x, uint16_t& y, uint16_t& z) {
-  touchSpi.beginTransaction(kTouchSpiSettings);
-  digitalWrite(TOUCH_CS_PIN, LOW);
-
-  const uint16_t z1 = transfer12(kCmdZ1);
-  const uint16_t z2 = transfer12(kCmdZ2);
-  z = z1 + 4095 - z2;
-
-  if (z < kTouchThreshold) {
-    digitalWrite(TOUCH_CS_PIN, HIGH);
-    touchSpi.endTransaction();
-    return false;
-  }
-
-  transfer12(kCmdX);  // Dummy read to settle the bus
-
-  const uint16_t y0 = transfer12(kCmdY);
-  const uint16_t x0 = transfer12(kCmdX);
-  const uint16_t y1 = transfer12(kCmdY);
-  const uint16_t x1 = transfer12(kCmdX);
-  const uint16_t y2 = transfer12(kCmdY);
-  const uint16_t x2 = transfer12(kCmdX);
-
-  digitalWrite(TOUCH_CS_PIN, HIGH);
-  touchSpi.endTransaction();
-
-  x = bestTwoAverage(x0, x1, x2);
-  y = bestTwoAverage(y0, y1, y2);
-  return true;
-}
-
-void applyRotation(uint16_t rawX, uint16_t rawY, uint16_t& outX, uint16_t& outY) {
-  switch (rotation % 4) {
-    case 0:
-      outX = 4095 - rawY;
-      outY = rawX;
-      break;
-    case 1:
-      outX = rawX;
-      outY = rawY;
-      break;
-    case 2:
-      outX = rawY;
-      outY = 4095 - rawX;
-      break;
-    default:
-      outX = 4095 - rawX;
-      outY = 4095 - rawY;
-      break;
-  }
+void clearState() {
+  current.pressed = false;
+  current.x = 0;
+  current.y = 0;
+  current.rawX = 0;
+  current.rawY = 0;
+  current.z = 0;
 }
 
 }  // namespace
@@ -107,47 +66,98 @@ void applyRotation(uint16_t rawX, uint16_t rawY, uint16_t& outX, uint16_t& outY)
 void begin(uint16_t width, uint16_t height) {
   screenWidth = width;
   screenHeight = height;
-  rotation = boardProfile().rotation;
 
+#if TOUCH_DEDICATED_SPI
+  // CYD28 touch is wired to its own SPI pins and does not share the TFT bus.
   touchSpi.begin(TOUCH_CLK_PIN, TOUCH_MISO_PIN, TOUCH_MOSI_PIN, TOUCH_CS_PIN);
-  pinMode(TOUCH_CS_PIN, OUTPUT);
-  digitalWrite(TOUCH_CS_PIN, HIGH);
-  if (TOUCH_IRQ_PIN >= 0) {
-    pinMode(TOUCH_IRQ_PIN, INPUT);
-  }
+  touchController.begin(touchSpi);
+  touchController.setRotation(boardProfile().rotation);
+#endif
+
   current.available = true;
   DBG_INFO("Touch: available=%d", static_cast<int>(current.available));
 }
 
 void update() {
   if (!current.available) {
-    current.pressed = false;
+    clearState();
     return;
   }
 
-  uint16_t rawX = 0;
-  uint16_t rawY = 0;
-  uint16_t pressure = 0;
-  if (!readRawPoint(rawX, rawY, pressure)) {
-    current.pressed = false;
+#if TOUCH_DEDICATED_SPI
+  if (!touchController.touched()) {
+    clearState();
     return;
   }
 
-  uint16_t rotatedX = 0;
-  uint16_t rotatedY = 0;
-  applyRotation(rawX, rawY, rotatedX, rotatedY);
+  const TS_Point point = touchController.getPoint();
+  if (point.z < kTouchThreshold) {
+    clearState();
+    return;
+  }
+
+  uint16_t transformedX = 0;
+  uint16_t transformedY = 0;
+  applyTransform(static_cast<uint16_t>(point.x), static_cast<uint16_t>(point.y), transformedX, transformedY);
 
   current.pressed = true;
-  current.rawX = rotatedX;
-  current.rawY = rotatedY;
-  current.z = pressure;
-  current.x = mapConstrained(rotatedX, boardProfile().touchXMin, boardProfile().touchXMax, 0, screenWidth - 1);
-  current.y = mapConstrained(rotatedY, boardProfile().touchYMin, boardProfile().touchYMax, 0, screenHeight - 1);
+  current.rawX = transformedX;
+  current.rawY = transformedY;
+  current.z = static_cast<uint16_t>(point.z);
+  current.x = mapConstrained(transformedX, boardProfile().touchXMin, boardProfile().touchXMax, 0, screenWidth - 1);
+  current.y = mapConstrained(transformedY, boardProfile().touchYMin, boardProfile().touchYMax, 0, screenHeight - 1);
 #if TOUCH_INVERT_X
   current.x = (screenWidth - 1) - current.x;
 #endif
 #if TOUCH_INVERT_Y
   current.y = (screenHeight - 1) - current.y;
+#endif
+#else
+  // CYD40 touch shares the display SPI bus, so sample through TFT_eSPI.
+  auto& tft = display::tft();
+  uint16_t rawX0 = 0;
+  uint16_t rawY0 = 0;
+  uint16_t rawX1 = 0;
+  uint16_t rawY1 = 0;
+
+  const uint16_t z0 = tft.getTouchRawZ();
+  if (z0 < kTouchThreshold) {
+    clearState();
+    return;
+  }
+  tft.getTouchRaw(&rawX0, &rawY0);
+
+  delay(1);
+  const uint16_t z1 = tft.getTouchRawZ();
+  if (z1 < kTouchThreshold) {
+    clearState();
+    return;
+  }
+
+  delay(2);
+  tft.getTouchRaw(&rawX1, &rawY1);
+  if (abs(static_cast<int>(rawX0) - static_cast<int>(rawX1)) > kRawNoiseMargin ||
+      abs(static_cast<int>(rawY0) - static_cast<int>(rawY1)) > kRawNoiseMargin) {
+    clearState();
+    return;
+  }
+
+  uint16_t transformedX = 0;
+  uint16_t transformedY = 0;
+  applyTransform(rawX0, rawY0, transformedX, transformedY);
+
+  current.pressed = true;
+  current.rawX = transformedX;
+  current.rawY = transformedY;
+  current.z = max(z0, z1);
+  current.x = mapConstrained(transformedX, boardProfile().touchXMin, boardProfile().touchXMax, 0, screenWidth - 1);
+  current.y = mapConstrained(transformedY, boardProfile().touchYMin, boardProfile().touchYMax, 0, screenHeight - 1);
+#if TOUCH_INVERT_X
+  current.x = (screenWidth - 1) - current.x;
+#endif
+#if TOUCH_INVERT_Y
+  current.y = (screenHeight - 1) - current.y;
+#endif
 #endif
 }
 

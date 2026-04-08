@@ -23,6 +23,7 @@ struct BoardProfile {
   int8_t ledGPin;
   int8_t ledBPin;
   int8_t ldrPin;
+  // Touch calibration is applied after any board-specific raw axis transform.
   int16_t touchXMin;
   int16_t touchXMax;
   int16_t touchYMin;
@@ -57,4 +58,3 @@ inline const BoardProfile& boardProfile() {
 }
 
 }  // namespace cyd
-
