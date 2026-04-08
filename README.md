@@ -26,23 +26,23 @@ The currently verified working baseline is:
 
 Practical rule:
 
-- keep display configuration in [config.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/config.h)
-- keep the known-good compile path in [platformio.ini](/Users/ant/PlatformIO/Projects/CYD_Display_Test/platformio.ini)
+- keep display configuration in [config.h](include/config.h)
+- keep the known-good compile path in [platformio.ini](platformio.ini)
 
 ## Scaffold structure
 
-- [config.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/config.h): board-select macros, TFT_eSPI setup, pins, touch calibration, and scaffold defaults
-- [board_profile.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/board_profile.h): C++ board metadata for runtime use
-- [debug.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/debug.h): leveled serial debug macros
-- [storage_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/storage_service.h): persisted scaffold settings using `Preferences`
-- [backlight_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/backlight_service.h): PWM backlight control
-- [rgb_led_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/rgb_led_service.h): onboard RGB LED support where available
-- [touch_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/touch_service.h): board-abstracted touch state and polling
-- [wifi_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/wifi_service.h): WiFiManager-based connection flow
-- [ota_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/ota_service.h): ArduinoOTA support
-- [display_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/display_service.h): display bootstrap helpers and shared `TFT_eSPI` instance
-- [app/app.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/app/app.h): minimal project-specific app layer entry point
-- [main.cpp](/Users/ant/PlatformIO/Projects/CYD_Display_Test/src/main.cpp): scaffold bootstrap and service orchestration
+- [config.h](include/config.h): board-select macros, TFT_eSPI setup, pins, touch calibration, and scaffold defaults
+- [board_profile.h](include/board_profile.h): C++ board metadata for runtime use
+- [debug.h](include/debug.h): leveled serial debug macros
+- [storage_service.h](include/storage_service.h): persisted scaffold settings using `Preferences`
+- [backlight_service.h](include/backlight_service.h): PWM backlight control
+- [rgb_led_service.h](include/rgb_led_service.h): onboard RGB LED support where available
+- [touch_service.h](include/touch_service.h): board-abstracted touch state and polling
+- [wifi_service.h](include/wifi_service.h): WiFiManager-based connection flow
+- [ota_service.h](include/ota_service.h): ArduinoOTA support
+- [display_service.h](include/display_service.h): display bootstrap helpers and shared `TFT_eSPI` instance
+- [app/app.h](include/app/app.h): minimal project-specific app layer entry point
+- [main.cpp](src/main.cpp): scaffold bootstrap and service orchestration
 
 ## Included core capabilities
 
@@ -66,9 +66,9 @@ The scaffold currently includes:
 The current hardware architecture is intentionally split by board:
 
 - display setup is common and always provided by `TFT_eSPI`
-- runtime board metadata comes from [board_profile.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/board_profile.h)
-- compile-time board wiring and calibration live in [config.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/config.h)
-- touch polling is abstracted behind [touch_service.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/touch_service.h), but the backend is board-specific
+- runtime board metadata comes from [board_profile.h](include/board_profile.h)
+- compile-time board wiring and calibration live in [config.h](include/config.h)
+- touch polling is abstracted behind [touch_service.h](include/touch_service.h), but the backend is board-specific
 
 Touch backend split:
 
@@ -128,8 +128,8 @@ It validates:
 
 Project-specific code should now start in:
 
-- [app/app.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/app/app.h)
-- [app.cpp](/Users/ant/PlatformIO/Projects/CYD_Display_Test/src/app/app.cpp)
+- [app/app.h](include/app/app.h)
+- [app.cpp](src/app/app.cpp)
 
 The included default app:
 
@@ -165,9 +165,49 @@ The scaffold currently depends on:
 - `PaulStoffregen/XPT2046_Touchscreen`
 - built-in Arduino ESP32 libraries for `WiFi`, `ArduinoOTA`, `Preferences`, and `SPI`
 
+## Potential optimisations and improvements
+
+These are not bugs — the scaffold works as intended. They are the natural next steps when evolving this into a real project.
+
+### Loop cadence
+
+`loop()` ends with `delay(10)`, which caps execution to approximately 100 iterations per second. For UI-heavy or touch-reactive projects, remove or replace this with `yield()`. The motion demo already self-limits via a 33 ms frame timer, so removing `delay(10)` will not cause runaway redraws.
+
+### OTA re-enable after late WiFi connection
+
+`cyd::ota::begin()` is called once at boot and arms OTA only if WiFi is already connected. If WiFi connects later (e.g., after the captive portal completes), OTA is never enabled. A simple fix is to call `ArduinoOTA.begin()` from inside `network::update()` once `WiFi.isConnected()` becomes true, gated by a flag so it only runs once.
+
+### SPI display frequency
+
+`SPI_FREQUENCY` is currently set to 27 MHz — a conservative value chosen for stability during initial board bring-up. ILI9341 is rated for 40 MHz reads and most boards handle 55 MHz writes reliably. Increasing to 55 MHz will meaningfully improve full-screen redraw throughput for animation-heavy projects. Test for pixel corruption at the higher frequency before shipping.
+
+### Touch calibration UI
+
+Touch calibration values (`TOUCH_X_MIN/MAX`, `TOUCH_Y_MIN/MAX`) are hardcoded per board in `config.h`. These were captured on specific units and may drift across individual panels. A calibration screen (tap corners, store results to NVS via `Preferences`) would make the scaffold portable across units without a recompile.
+
+### Dead code in display_service
+
+`drawValidationDemo()` and `updateValidationDemo()` are declared in `display_service.h` and implemented in `display_service.cpp`, but `app.cpp` draws its own validation layout directly via `tft()` and never calls them. Remove both from the header and implementation when forking to avoid confusion.
+
+### RGB LED scaffold behaviour
+
+`rgb::update()` cycles the LED through red → green → blue on a 1200 ms timer. This is only useful as a visual "alive" indicator during scaffold validation. Real projects should replace this with application-driven colour logic, or call `rgb::setColor()` (currently a file-scope function — promote it to the public header if needed).
+
+### WiFi connection is blocking at boot
+
+`trySecretsWifi()` blocks the main thread for up to `APP_WIFI_CONNECT_TIMEOUT_SEC` seconds using `delay(200)` polling. For projects where fast boot-to-display matters, this can be restructured to a non-blocking attempt with a millis-based timeout, deferring the WiFiManager portal to a later phase.
+
+### Backlight LEDC channel
+
+The backlight service hardcodes LEDC channel 0. If an app adds PWM-driven peripherals (e.g., a buzzer, motor), it must avoid channel 0 or the backlight will be disrupted. Consider making the channel a constant in `config.h` (`APP_BACKLIGHT_LEDC_CHANNEL`) so it can be relocated without editing the service.
+
+### Partition table
+
+The scaffold uses the default Arduino ESP32 partition table, which has no OTA slot. Any project that needs wireless firmware updates must add `partitions_custom.csv` and reference it in `platformio.ini` before the first real flash.
+
 ## Notes for future projects
 
 - Keep project-specific code separate from the scaffold services where possible.
 - Extend board-specific behavior through the board profile and per-board layout logic rather than scattering raw pin checks through app code.
-- If a new CYD variant is added later, start by adding a new profile to [config.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/config.h) and [board_profile.h](/Users/ant/PlatformIO/Projects/CYD_Display_Test/include/board_profile.h).
+- If a new CYD variant is added later, start by adding a new profile to [config.h](include/config.h) and [board_profile.h](include/board_profile.h).
 - `cyd28` and `cyd40` touch wiring are intentionally different in this scaffold; do not collapse them back to one shared set of touch pins.
