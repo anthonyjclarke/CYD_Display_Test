@@ -1,7 +1,9 @@
 .DS_Store
 .pio/
 .vscode/
+.cache/
 compile_commands.json
 include/secrets.h
 *.bin
 *.elf
+*.code-workspace
