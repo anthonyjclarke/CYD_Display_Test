@@ -150,6 +150,8 @@
 // CYD panels are commonly wired BGR. If colours are swapped, remove this define.
 #define TFT_RGB_ORDER TFT_BGR
 
+#define FIRMWARE_VERSION             "1.0.0"
+
 #define APP_DEFAULT_DEBUG_LEVEL      3
 #define APP_DEFAULT_BRIGHTNESS       255
 #define APP_WIFI_PORTAL_TIMEOUT_SEC  180
