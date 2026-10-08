@@ -1,10 +1,12 @@
 #include <Arduino.h>
+#include <esp_ota_ops.h>
 
 #include "app/app.h"
 #include "backlight_service.h"
 #include "board_profile.h"
 #include "debug.h"
 #include "display_service.h"
+#include "network/improv_setup.h"
 #include "ota_service.h"
 #include "rgb_led_service.h"
 #include "storage_service.h"
@@ -15,12 +17,15 @@ uint8_t debugLevel = APP_DEFAULT_DEBUG_LEVEL;
 
 void setup() {
   Serial.begin(115200);
+  improvBegin();
   delay(250);
 
   cyd::storage::begin();
   debugLevel = cyd::storage::settings().debugLevel;
 
   DBG_INFO("Booting scaffold for %s", cyd::boardProfile().name);
+  DBG_INFO("%s v%s", PROJECT_NAME, FIRMWARE_VERSION);
+  DBG_INFO("Running from %s", esp_ota_get_running_partition()->label);
 
   cyd::backlight::begin();
   cyd::display::begin();
@@ -45,6 +50,7 @@ void setup() {
 void loop() {
   const uint32_t now = millis();
 
+  improvTick();
   cyd::network::update();
   cyd::ota::update();
   cyd::touch::update();

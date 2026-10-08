@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include "debug.h"
+#include "network/improv_setup.h"
 #include "storage_service.h"
 #include <WiFi.h>
 #include <WiFiManager.h>
@@ -87,7 +88,21 @@ void begin() {
   bool connected = trySecretsWifi();
   if (!connected) {
     DBG_INFO("WiFi: attempting autoConnect");
+#if IMPROV_SETUP_ENABLED
+    // Non-blocking portal so Improv-Serial keeps answering the web installer.
+    wifiManager.setConfigPortalBlocking(false);
+#endif
     connected = wifiManager.autoConnect(current.apName.c_str());
+#if IMPROV_SETUP_ENABLED
+    while (!connected && wifiManager.getConfigPortalActive()) {
+      if (wifiManager.process()) {
+        connected = true;
+        break;
+      }
+      improvTick();  // restarts once Improv credentials connect
+      delay(5);
+    }
+#endif
   }
 
   if (!connected) {
