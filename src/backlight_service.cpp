@@ -8,18 +8,21 @@ namespace cyd::backlight {
 
 namespace {
 
+// Arduino core 2.0.x channel API (espressif32@6.12.0). Apps must not use channel 0.
+constexpr uint8_t kBacklightChannel = 0;
 uint8_t currentBrightness = 0;
 
 }  // namespace
 
 void begin() {
-  ledcAttach(boardProfile().backlightPin, 5000, 8);
+  ledcSetup(kBacklightChannel, 5000, 8);
+  ledcAttachPin(boardProfile().backlightPin, kBacklightChannel);
   setBrightness(APP_DEFAULT_BRIGHTNESS);
 }
 
 void setBrightness(uint8_t value) {
   currentBrightness = value;
-  ledcWrite(boardProfile().backlightPin, value);
+  ledcWrite(kBacklightChannel, value);
 }
 
 uint8_t brightness() {
