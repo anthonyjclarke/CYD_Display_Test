@@ -7,3 +7,4 @@ include/secrets.h
 *.bin
 *.elf
 *.code-workspace
+_site/
