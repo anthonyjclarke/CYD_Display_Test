@@ -72,7 +72,7 @@ Board selected at build time: `-D CYD_BOARD_28` or `-D CYD_BOARD_40`. Both board
 
 **Built-in fonts**: `LOAD_GLCD`, `LOAD_FONT2`–8 active (scaffold diagnostic app). Fork projects should switch to VLW fonts and remove `LOAD_*` defines.
 
-**Backlight**: LEDC channel 0, 5 kHz, 8-bit PWM. Do not use channel 0 in app code.
+**Backlight**: LEDC channel 0, 5 kHz, 8-bit PWM, core 2.x API (`ledcSetup`/`ledcAttachPin`). Do not use channel 0 in app code; core-3 `ledcAttach` does not build on the pinned platform.
 
 **`loop()` cadence**: `delay(10)` caps main loop to ~100 Hz. Remove/reduce for higher-frequency projects.
 
@@ -83,3 +83,10 @@ Board selected at build time: `-D CYD_BOARD_28` or `-D CYD_BOARD_40`. Both board
 **Config injection**: TFT_eSPI configured via `-include include/config.h` in `build_flags` — no `User_Setup.h` needed.
 
 **`debugLevel` global**: Declared in `main.cpp`, `extern` in `debug.h`, loaded from NVS on boot.
+
+## Web installer and releases
+
+- Platform pinned to `espressif32@6.12.0`; `partitions_custom.csv` and `PROJECT_NAME` are frozen once released. A project copied from the scaffold renames `PROJECT_NAME` *before* its first release (README "Starting a new project").
+- `FIRMWARE_VERSION` / `PROJECT_NAME` stay `#define` – config.h is force-included into C files.
+- Release images come only from CI on a `v*` tag on `main`; never publish a local build (it holds `secrets.h`). Never put `firmware-merged.bin` in a manifest.
+- Improv is vendored in `lib/ImprovWiFi` – never add it to `lib_deps`. `improvTick()` must run at least every ~1 s (loop and portal loop).

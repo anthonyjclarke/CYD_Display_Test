@@ -20,6 +20,34 @@ This repository is now a reusable starting scaffold for CYD-based ESP32 projects
 
 The goal is one codebase with build-flag board selection, shared core services, and a built-in validation app that proves the hardware baseline before project-specific work starts.
 
+It is also installer-ready: a project copied from it gets a browser installer
+by renaming one constant (see [Starting a new project](#starting-a-new-project-from-this-scaffold)).
+
+## Install
+
+**[anthonyjclarke.github.io/CYD_Display_Test][installer]** flashes the latest
+release from the browser – no PlatformIO, no drivers to build. It needs desktop
+Chrome, Edge or Opera.
+
+1. Pick your board – 2.8″ ESP32-2432S028R or 4.0″ ESP32-32E.
+2. Plug it in with a USB data cable, click **Connect & install** and choose its
+   port.
+3. On a new board, say yes to erasing it. When flashing finishes, choose
+   **Configure WiFi** and pick your network.
+4. The validation screen shows the board, WiFi and touch status.
+
+A board already running this firmware is recognised and offered **Update**,
+which keeps its settings and WiFi. Each [release][releases] also carries the
+images for flashing by hand. `*-firmware.bin` is the app on its own, for an
+OTA update. `*-merged.bin` is a clean install at `0x0` with esptool, and it
+**erases settings and WiFi**. Nothing else is needed: no API keys.
+
+Coming from 1.0.0, the first install must erase the board, because 1.1.0
+moves from `default.csv` to the dual-OTA `partitions_custom.csv`.
+
+[installer]: https://anthonyjclarke.github.io/CYD_Display_Test/
+[releases]: https://github.com/anthonyjclarke/CYD_Display_Test/releases
+
 ## Confirmed working baseline
 
 The currently verified working baseline is:
@@ -164,6 +192,25 @@ pio run -e cyd28 -t upload
 pio device monitor -b 115200
 ```
 
+WiFi is provisioned through the `<board>-XXXX-setup` captive portal or over USB
+with Improv-Serial, which listens on every boot so the browser installer can
+also change WiFi or update a running board. For bench work, `include/secrets.h`
+(gitignored) can hold `APP_WIFI_DEFAULT_SSID` / `APP_WIFI_DEFAULT_PASSWORD`;
+the build works without it.
+
+That is also why release images are built only by CI, from a `v*` tag on
+`main` (`.github/workflows/firmware.yml`). A local build compiles in your
+`secrets.h`. **Never publish a local build.**
+
+To try the installer page from a local build, build both envs, then:
+
+```sh
+python3 ../cyd-web-installer/tools/make_manifests.py --out _site
+python3 -m http.server -d _site 8000
+```
+
+and open `http://localhost:8000` in Chrome. `_site/` is gitignored.
+
 ## Dependencies
 
 The scaffold currently depends on:
@@ -172,6 +219,10 @@ The scaffold currently depends on:
 - `tzapu/WiFiManager`
 - `PaulStoffregen/XPT2046_Touchscreen`
 - built-in Arduino ESP32 libraries for `WiFi`, `ArduinoOTA`, `Preferences`, and `SPI`
+- `lib/ImprovWiFi`: vendored Improv WiFi Library 0.0.2 with the cyd-web-installer parser fix – never add the registry version to `lib_deps`
+
+The platform is pinned to `espressif32@6.12.0` (Arduino core 2.0.17), matching
+the other CYD installer projects.
 
 ## Potential optimisations and improvements
 
@@ -207,11 +258,33 @@ Touch calibration values (`TOUCH_X_MIN/MAX`, `TOUCH_Y_MIN/MAX`) are hardcoded pe
 
 ### Backlight LEDC channel
 
-The backlight service hardcodes LEDC channel 0. If an app adds PWM-driven peripherals (e.g., a buzzer, motor), it must avoid channel 0 or the backlight will be disrupted. Consider making the channel a constant in `config.h` (`APP_BACKLIGHT_LEDC_CHANNEL`) so it can be relocated without editing the service.
+The backlight service hardcodes LEDC channel 0 (core 2.x channel API). If an app adds PWM-driven peripherals (e.g., a buzzer, motor), it must avoid channel 0 or the backlight will be disrupted. Consider making the channel a constant in `config.h` (`APP_BACKLIGHT_LEDC_CHANNEL`) so it can be relocated without editing the service.
 
 ### Partition table
 
-The scaffold uses the default Arduino ESP32 partition table, which has no OTA slot. Any project that needs wireless firmware updates must add `partitions_custom.csv` and reference it in `platformio.ini` before the first real flash.
+Since 1.1.0 the scaffold uses the standard CYD dual-OTA `partitions_custom.csv`
+(two 1.75 MB app slots, 384 KB data, NVS at `0x9000`). Treat it as frozen once a
+project has released: changing it later forces every user to erase.
+
+## Starting a new project from this scaffold
+
+The scaffold already meets the [cyd-web-installer](https://github.com/anthonyjclarke/cyd-web-installer)
+contract, so a copy is installer-ready after these edits:
+
+1. In `include/config.h`, set `PROJECT_NAME` to the new repo name, reset
+   `FIRMWARE_VERSION` (for example `"0.1.0-dev"`) and set
+   `IMPROV_DEVICE_PREFIX`. `PROJECT_NAME` is **frozen after the first
+   release**: Improv and the manifest match on it, and a rename turns
+   **Update** into **Install**.
+2. In `platformio.ini`, keep `platform`, `board_build.partitions` and
+   `extra_scripts` as they are. Adjust each env's `custom_installer_label` /
+   `custom_installer_hint`, or remove them from envs that shouldn't appear.
+3. Keep `improvTick()` in `loop()` and in the portal loop, and keep anything in
+   `loop()` from blocking for more than about 1 s.
+4. Replace the Install link in this README, and add a `CHANGELOG.md` entry.
+5. On GitHub, follow the one-time setup in the cyd-web-installer README
+   (Pages from Actions, a `v*` tag rule on the `github-pages` environment).
+   Release by tagging `vX.Y.Z` on `main`.
 
 ## Notes for future projects
 
