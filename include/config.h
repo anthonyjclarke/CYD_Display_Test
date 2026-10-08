@@ -150,7 +150,17 @@
 // CYD panels are commonly wired BGR. If colours are swapped, remove this define.
 #define TFT_RGB_ORDER TFT_BGR
 
-#define FIRMWARE_VERSION             "1.0.0"
+// Web installer contract (cyd-web-installer). #define, not constexpr: this
+// header is force-included into C files too. A project copied from this
+// scaffold sets its own PROJECT_NAME before its first release; after that it
+// is frozen, because Improv and the manifest match on it to offer Update.
+#define FIRMWARE_VERSION             "1.1.0-dev"
+#define PROJECT_NAME                 "CYD_Display_Test"
+
+// Improv-Serial WiFi setup, on every boot (src/network/improv_setup.*).
+// The prefix names the device in the installer dialog (+ last 4 MAC digits).
+#define IMPROV_SETUP_ENABLED         1
+#define IMPROV_DEVICE_PREFIX         "CYD-Scaffold"
 
 #define APP_DEFAULT_DEBUG_LEVEL      3
 #define APP_DEFAULT_BRIGHTNESS       255
