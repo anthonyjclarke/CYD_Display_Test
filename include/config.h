@@ -154,7 +154,7 @@
 // header is force-included into C files too. A project copied from this
 // scaffold sets its own PROJECT_NAME before its first release; after that it
 // is frozen, because Improv and the manifest match on it to offer Update.
-#define FIRMWARE_VERSION             "1.1.0"
+#define FIRMWARE_VERSION             "1.2.0-dev"
 #define PROJECT_NAME                 "CYD_Display_Test"
 
 // Improv-Serial WiFi setup, on every boot (src/network/improv_setup.*).
