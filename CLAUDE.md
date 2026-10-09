@@ -89,4 +89,5 @@ Board selected at build time: `-D CYD_BOARD_28` or `-D CYD_BOARD_40`. Both board
 - Platform pinned to `espressif32@6.12.0`; `partitions_custom.csv` and `PROJECT_NAME` are frozen once released. A project copied from the scaffold renames `PROJECT_NAME` *before* its first release (README "Starting a new project").
 - `FIRMWARE_VERSION` / `PROJECT_NAME` stay `#define` – config.h is force-included into C files.
 - Release images come only from CI on a `v*` tag on `main`; never publish a local build (it holds `secrets.h`). Never put `firmware-merged.bin` in a manifest.
+- Before the next release, clear *Tests owed* in `docs/WEB_INSTALLER.md` (RUNBOOK 5b).
 - Improv is vendored in `lib/ImprovWiFi` (from cyd-web-installer ≥ 1.0.1 copy-in, with the leading-`\n` fix) – never add it to `lib_deps`. `improvTick()` must run at least every ~1 s (loop and portal loop).

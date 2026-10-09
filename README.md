@@ -282,6 +282,9 @@ contract, so a copy is installer-ready after these edits:
 3. Keep `improvTick()` in `loop()` and in the portal loop, and keep anything in
    `loop()` from blocking for more than about 1 s.
 4. Replace the Install link in this README, and add a `CHANGELOG.md` entry.
+   In `docs/WEB_INSTALLER.md`, clear the results and untick *Tests owed*.
+   A smoke test (fresh install on one board, then Connect shows "Connected
+   to …") is enough to go live. Run the full matrix before the next release.
 5. On GitHub, follow the one-time setup in the cyd-web-installer README
    (Pages from Actions, a `v*` tag rule on the `github-pages` environment).
    Release by tagging `vX.Y.Z` on `main`.

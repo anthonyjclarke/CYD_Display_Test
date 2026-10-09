@@ -18,6 +18,20 @@ Manifests list four parts at `0x1000 / 0x8000 / 0xe000 / 0x10000`.
 
 ---
 
+## Tests owed
+
+Nothing owed: the full matrix (RUNBOOK 5b) passed for 1.1.0. A project copied
+from this scaffold resets this list after its smoke test (RUNBOOK 5a), and
+clears it before its next release or real piece of work.
+
+- [x] Case 1 – fresh install, erased, on each board
+- [x] Case 2 – Update on a provisioned board (settings kept)
+- [x] Case 3 – Update from `app1` (ArduinoOTA)
+- [x] Case 4 – wrong board image, then reinstall
+- [ ] Case 7 – Windows Edge (optional)
+
+---
+
 ## Hardware test matrix (Phase 5)
 
 Run against the CI `site-preview` served on `http://localhost:8000`.
