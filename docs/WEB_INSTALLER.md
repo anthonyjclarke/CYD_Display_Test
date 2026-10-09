@@ -26,8 +26,8 @@ Run against the CI `site-preview` served on `http://localhost:8000`.
 |:----|:-----------------------------------|:------------|:-----|:--------|
 | 1   | Fresh install, erased – `cyd28`    | 2.8″ `B0:CB:D8:DA:AE:8C` | 09-10-2026 | Pass |
 | 1   | Fresh install, erased – `cyd40`    | 4.0″ `A4:F0:0F:68:95:5C` | 09-10-2026 | Pass |
-| 2   | Update on provisioned board        | 2.8″        | 09-10-2026 | Blocked – copy-in Improv framing |
-| 3   | Board on `app1` (ArduinoOTA)       | 2.8″        | 09-10-2026 | Partial – see below |
+| 2   | Update on provisioned board        | 4.0″        | 09-10-2026 | Pass (after newline fix) |
+| 3   | Board on `app1` (ArduinoOTA)       | 4.0″        | 09-10-2026 | Pass (after newline fix) |
 | 4   | Wrong board image, then reinstall  | 2.8″        | 09-10-2026 | Pass – dark, then recovers |
 | 5   | Web `/update` with `*-firmware.bin` | –          | –    | n/a – no web UI |
 | 6   | macOS Chrome                       | 2.8″        | 09-10-2026 | Pass – port found, flash done |
@@ -65,5 +65,22 @@ is swallowed and Improv is "not detected" within 1.5 s. Chrome does not reset
 the board on Connect. Running the SDK in Chrome against a test build that writes
 `\n` before each packet: 6/6 detected from the first request (7–31 ms), and the
 real dialog showed "Connected to CYD-Scaffold-CBB0". The fix belongs in
-cyd-web-installer `copy-in/lib/ImprovWiFi`; this repo keeps the unmodified copy
-until it lands, then re-copies it and repeats cases 2 and 3.
+cyd-web-installer `copy-in/lib/ImprovWiFi`. Until it lands there, this repo
+carries it as a marked local patch in `lib/ImprovWiFi` (commit `3616edf`).
+
+**Case 2, 4.0″, with the patch.** A USB-flashed `1.1.0-dev.0` build on `app0`.
+Connect showed "Connected to CYD-Scaffold-F0A4 · CYD_Display_Test 1.1.0-dev.0"
+and offered **Update CYD_Display_Test**, with no erase question. Afterwards:
+`v1.1.0-dev`, `Running from app0`, the NVS boot counter carried on (4 → 6), and
+WiFi rejoined from NVS. (An accidental Update with the 2.8″ image selected was
+also offered and completed on the 4.0″ – the reverse of case 4. A reinstall of
+the 4.0″ image with erase recovered it.)
+
+**Case 3, 4.0″, with the patch.** ArduinoOTA of `1.1.0-dev.0` put it on `app1`.
+The first two OTA attempts timed out with the device never connecting back
+(ping 112–150 ms on this unit's WiFi); the third succeeded. Connect offered
+**Update**, no erase. Afterwards: `v1.1.0-dev`, `Running from app0`, boot counter
+carried on (10 → 12), WiFi from NVS.
+
+The tested release image is the CI preview from run 37846382404, which predates
+the patch. The images that answered Connect were local builds with the patch.
