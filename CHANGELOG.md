@@ -4,7 +4,7 @@ All notable changes to the CYD Project Scaffold. Dates are DD-MM-YYYY.
 
 ---
 
-## [1.1.0] – unreleased
+## [1.1.0] 09-10-2026
 
 ### Added
 
