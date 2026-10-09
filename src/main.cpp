@@ -18,6 +18,7 @@ uint8_t debugLevel = APP_DEFAULT_DEBUG_LEVEL;
 void setup() {
   Serial.begin(115200);
   improvBegin();
+  delay(250);
 
   cyd::storage::begin();
   debugLevel = cyd::storage::settings().debugLevel;
@@ -29,11 +30,9 @@ void setup() {
   cyd::backlight::begin();
   cyd::display::begin();
   cyd::display::showBootMessage("CYD Scaffold", "Initialising services...");
-  improvTick();  // the installer's Connect resets the board; answer within 1.5 s
 
   cyd::rgb::begin();
   cyd::touch::begin(cyd::boardProfile().viewWidth, cyd::boardProfile().viewHeight);
-  improvTick();
 
   cyd::network::setPortalCallback(cyd::display::showWifiPortalMessage);
   cyd::display::showBootMessage("CYD Scaffold", "Connecting WiFi...");
