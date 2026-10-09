@@ -15,6 +15,13 @@ All notable changes to the CYD Project Scaffold. Dates are DD-MM-YYYY.
 - `tools/merge_bin.py` post-build script (`flash_parts.json`, `firmware-merged.bin`).
 - Improv-Serial WiFi setup, always on (`lib/ImprovWiFi`, `src/network/improv_setup.*`);
   the WiFiManager portal now runs non-blocking so Improv answers during it.
+
+### Fixed
+
+- Installer Connect offered **Install** instead of **Update** on a provisioned
+  board: Improv replies now start on a new line, because ESP Web Tools drops a
+  packet that follows serial noise. Local patch in `lib/ImprovWiFi` until the
+  cyd-web-installer copy-in carries it.
 - `PROJECT_NAME` in `include/config.h`, and boot log lines for the version and
   the running app partition.
 - README: Install section and how a new project copied from the scaffold
