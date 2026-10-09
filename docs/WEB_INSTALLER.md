@@ -84,3 +84,19 @@ carried on (10 → 12), WiFi from NVS.
 
 The tested release image is the CI preview from run 37846382404, which predates
 the patch. The images that answered Connect were local builds with the patch.
+
+---
+
+## Release v1.1.0 (09-10-2026)
+
+Tag `v1.1.0` on `main` (`0deab15`); release run 37878520628 built and
+published. The live page and `index.json` show 1.1.0 for both boards; each
+manifest lists four parts; the release carries both boards' `*-firmware.bin`
+and `*-merged.bin` and `SHA256SUMS.txt`. The release notes open with the
+erase-on-first-install note for 1.0.0 boards.
+
+**Live Update, 2.8″ `B0:CB:D8:DA:AE:8C`.** Prepared with the CI `1.1.0-dev`
+image that carries the Improv newline fix (four parts, no erase). From
+https://anthonyjclarke.github.io/CYD_Display_Test/ Connect offered **Update**,
+no erase question. Afterwards: `v1.1.0`, `Running from app0`, boot counter
+carried on (32 → 35), WiFi from NVS. Pass.
