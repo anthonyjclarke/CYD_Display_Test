@@ -25,10 +25,10 @@ Run against the CI `site-preview` served on `http://localhost:8000`.
 | #   | Case                               | Board / MAC | Date | Result  |
 |:----|:-----------------------------------|:------------|:-----|:--------|
 | 1   | Fresh install, erased – `cyd28`    | 2.8″ `B0:CB:D8:DA:AE:8C` | 09-10-2026 | Pass |
-| 1   | Fresh install, erased – `cyd40`    |             |      | pending |
+| 1   | Fresh install, erased – `cyd40`    | 4.0″ `A4:F0:0F:68:95:5C` | 09-10-2026 | Pass |
 | 2   | Update on provisioned board        | 2.8″        | 09-10-2026 | Blocked – copy-in Improv framing |
 | 3   | Board on `app1` (ArduinoOTA)       | 2.8″        | 09-10-2026 | Partial – see below |
-| 4   | Wrong board image, then reinstall  |             |      | pending |
+| 4   | Wrong board image, then reinstall  | 2.8″        | 09-10-2026 | Pass – dark, then recovers |
 | 5   | Web `/update` with `*-firmware.bin` | –          | –    | n/a – no web UI |
 | 6   | macOS Chrome                       | 2.8″        | 09-10-2026 | Pass – port found, flash done |
 | 7   | Windows Edge                       |             |      | optional |
@@ -45,6 +45,16 @@ Core 2.0.17 logs a harmless `addApbChangeCallback(): duplicate` line.
 it came back on `app0` at `1.1.0-dev`, the NVS boot counter carried on, and WiFi
 rejoined from NVS (the CI image has no `secrets.h`). So the `app1` recovery and
 settings survival pass. But Connect offered **Install**, not **Update**.
+
+**Case 4, 2.8″.** The `cyd40` preview parts written to the 2.8″ as the
+installer would (four parts, esptool, no erase) boot without a crash. It
+reports `ESP32-32E 4.0in` and keeps its NVS device name, boot counter and WiFi;
+the screen stays dark (backlight GPIO 27 vs 21). Writing the `cyd28` parts back
+restores it with settings and WiFi intact.
+
+**Case 1, 4.0″.** Erased, installed from the CI preview with erase, WiFi
+through **Configure WiFi**. Boot log: `v1.1.0-dev`, `Running from app0`,
+ST7796S 480×320 as expected, WiFi and ArduinoOTA up, no crash.
 
 **Why Connect offered Install – shared copy-in defect.** ESP Web Tools 10.4.0
 (improv-wifi-serial-sdk 2.8.0) only parses an Improv packet that starts a line.
