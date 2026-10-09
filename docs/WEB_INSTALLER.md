@@ -65,8 +65,8 @@ is swallowed and Improv is "not detected" within 1.5 s. Chrome does not reset
 the board on Connect. Running the SDK in Chrome against a test build that writes
 `\n` before each packet: 6/6 detected from the first request (7–31 ms), and the
 real dialog showed "Connected to CYD-Scaffold-CBB0". The fix belongs in
-cyd-web-installer `copy-in/lib/ImprovWiFi`. Until it lands there, this repo
-carries it as a marked local patch in `lib/ImprovWiFi` (commit `3616edf`).
+cyd-web-installer `copy-in/lib/ImprovWiFi`; it landed there in 1.0.1 and this
+repo's `lib/ImprovWiFi` matches that copy.
 
 **Case 2, 4.0″, with the patch.** A USB-flashed `1.1.0-dev.0` build on `app0`.
 Connect showed "Connected to CYD-Scaffold-F0A4 · CYD_Display_Test 1.1.0-dev.0"

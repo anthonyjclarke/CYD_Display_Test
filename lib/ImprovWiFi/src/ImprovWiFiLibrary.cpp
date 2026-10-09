@@ -359,9 +359,10 @@ void ImprovWiFi::setState(ImprovTypes::State state)
     checksum += d;
   data[10] = checksum;
 
-  // cyd-web-installer local patch (CYD_Display_Test): ESP Web Tools only parses a
-  // packet that starts a line, and the stream often begins with noise when
-  // Chrome opens the port. A leading newline keeps the reply from being dropped.
+  // cyd-web-installer patch: ESP Web Tools (improv-wifi-serial-sdk) only
+  // parses a packet that starts a line. When Chrome opens the port the stream
+  // often begins with noise (NULs, part of a debug line), and the SDK then
+  // discards up to the next newline - this reply included. Start on a new line.
   serial->write('\n');
   serial->write(data.data(), data.size());
 }
@@ -380,9 +381,10 @@ void ImprovWiFi::setError(ImprovTypes::Error error)
     checksum += d;
   data[10] = checksum;
 
-  // cyd-web-installer local patch (CYD_Display_Test): ESP Web Tools only parses a
-  // packet that starts a line, and the stream often begins with noise when
-  // Chrome opens the port. A leading newline keeps the reply from being dropped.
+  // cyd-web-installer patch: ESP Web Tools (improv-wifi-serial-sdk) only
+  // parses a packet that starts a line. When Chrome opens the port the stream
+  // often begins with noise (NULs, part of a debug line), and the SDK then
+  // discards up to the next newline - this reply included. Start on a new line.
   serial->write('\n');
   serial->write(data.data(), data.size());
 }
@@ -401,9 +403,10 @@ void ImprovWiFi::sendResponse(std::vector<uint8_t> &response)
     checksum += d;
   data.push_back(checksum);
 
-  // cyd-web-installer local patch (CYD_Display_Test): ESP Web Tools only parses a
-  // packet that starts a line, and the stream often begins with noise when
-  // Chrome opens the port. A leading newline keeps the reply from being dropped.
+  // cyd-web-installer patch: ESP Web Tools (improv-wifi-serial-sdk) only
+  // parses a packet that starts a line. When Chrome opens the port the stream
+  // often begins with noise (NULs, part of a debug line), and the SDK then
+  // discards up to the next newline - this reply included. Start on a new line.
   serial->write('\n');
   serial->write(data.data(), data.size());
 }
