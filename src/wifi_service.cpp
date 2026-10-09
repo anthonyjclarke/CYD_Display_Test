@@ -49,6 +49,34 @@ void refreshStatus() {
   }
 }
 
+// Opening the port from the web installer resets the board, and ESP Web Tools
+// gives Improv only 1.5 s to answer. So keep Improv ticking while WiFi joins,
+// rather than blocking inside WiFiManager.autoConnect().
+bool waitForWifi() {
+  const uint32_t startedAt = millis();
+  while (!WiFi.isConnected() && (millis() - startedAt) < (APP_WIFI_CONNECT_TIMEOUT_SEC * 1000UL)) {
+    improvTick();
+    delay(10);
+  }
+  return WiFi.isConnected();
+}
+
+bool trySavedWifi() {
+  if (!wifiManager.getWiFiIsSaved()) {
+    return false;
+  }
+
+  DBG_INFO("WiFi: joining saved network %s", wifiManager.getWiFiSSID().c_str());
+  WiFi.begin();
+  if (waitForWifi()) {
+    DBG_INFO("WiFi: connected using saved credentials");
+    return true;
+  }
+
+  DBG_WARN("WiFi: saved network not reachable");
+  return false;
+}
+
 bool trySecretsWifi() {
   if (String(APP_WIFI_DEFAULT_SSID).isEmpty()) {
     return false;
@@ -56,10 +84,7 @@ bool trySecretsWifi() {
 
   DBG_INFO("WiFi: trying credentials from secrets.h");
   WiFi.begin(APP_WIFI_DEFAULT_SSID, APP_WIFI_DEFAULT_PASSWORD);
-  const uint32_t startedAt = millis();
-  while (!WiFi.isConnected() && (millis() - startedAt) < (APP_WIFI_CONNECT_TIMEOUT_SEC * 1000UL)) {
-    delay(200);
-  }
+  waitForWifi();
 
   if (WiFi.isConnected()) {
     DBG_INFO("WiFi: connected using secrets.h");
@@ -85,7 +110,7 @@ void begin() {
   wifiManager.setAPCallback(handlePortalStart);
   wifiManager.setHostname(storage::settings().deviceName.c_str());
 
-  bool connected = trySecretsWifi();
+  bool connected = trySecretsWifi() || trySavedWifi();
   if (!connected) {
     DBG_INFO("WiFi: attempting autoConnect");
 #if IMPROV_SETUP_ENABLED
